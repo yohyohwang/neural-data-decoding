@@ -1,0 +1,13 @@
+Yohyoh Wang 
+Neural Data Decoding
+Version May 2018
+yohyohwang@uchicago.edu
+
+________ 
+
+
+The goal of this project was to predict the intended direction of movement from signals recorded from a population of neurons in macaque motor cortex. 
+I implemented the population vector and maximum likelihood decoders and compared their performance as % prediction accuracy. 
+
+My report can be found at 
+https://htmlpreview.github.io/?https://github.com/yohyohwang/neural-data-decoding/blob/main/html/lab6.html
