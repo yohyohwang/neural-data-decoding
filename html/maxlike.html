@@ -1,0 +1,481 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Population vector decoder</title><meta name="generator" content="MATLAB 9.2"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-28"><meta name="DC.source" content="maxlike.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Population vector decoder</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Train</a></li><li><a href="#2">Test</a></li><li><a href="#3">Q1 Performance</a></li><li><a href="#4">Q2</a></li><li><a href="#5">Q2 Additional comments</a></li><li><a href="#6">Q3 Weighting with change in firing rate from baseline</a></li><li><a href="#7">Q3 Comments</a></li><li><a href="#8">Maximum likelihood decoder</a></li><li><a href="#9">Train with poisspdf</a></li><li><a href="#10">Test</a></li><li><a href="#11">Q1 Performance</a></li><li><a href="#12">Maximum likelihood performance (Poisson)</a></li><li><a href="#13">Train with normpdf</a></li><li><a href="#14">Q4 Performance</a></li><li><a href="#15">Maximum likelihood performance (Gaussian)</a></li></ul></div><h2 id="1">Train</h2><pre class="codeinput">clear <span class="string">all</span>; close <span class="string">all</span>; load(<span class="string">'Lab5_CenterOutTrain.mat'</span>);
+load(<span class="string">'sT_p.mat'</span>);
+rad=0:pi/4:2*pi;
+spikeWindow=1;
+
+<span class="comment">%get means</span>
+<span class="keyword">for</span> n=1:length(unit)
+    nUse=unit(n).times;
+    <span class="keyword">for</span> dir=1:max(direction)
+        usego=go(direction==dir); <span class="comment">%only use go times for this direction</span>
+        sT_all=[];
+        <span class="keyword">for</span> goTime=1:length(usego)
+            spikeTimes=nUse(nUse &gt;= usego(goTime)-spikeWindow &amp; nUse &lt;= usego(goTime)); <span class="comment">%limit spike times to each epoch</span>
+            <span class="comment">%spikeTimes=nUse(nUse &gt;= usego(goTime)-spikeWindow/2 &amp; nUse &lt;= usego(goTime)+spikeWindow/2); %limit spike times to each epoch</span>
+            spikeNum=length(spikeTimes);
+            sT_all=[sT_all;spikeNum];
+        <span class="keyword">end</span>
+        sT_means(n,dir)=mean(sT_all)/spikeWindow;
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="comment">%fit cosine function</span>
+cos_fun=@(p,theta) p(1)+p(2)*cos(theta-p(3)); <span class="comment">%Cosine function</span>
+<span class="keyword">for</span> n=1:size(sT_means,1)
+    sT_fit(n,:) = cos_fun(p(n,:),rad);
+<span class="keyword">end</span>
+
+<span class="comment">%preferred directions</span>
+<span class="keyword">if</span> exist(<span class="string">'sT_pref'</span>,<span class="string">'var'</span>)
+<span class="keyword">else</span>
+    [m sT_pref] = max(sT_fit'); <span class="comment">%tuning curve preferred directions</span>
+<span class="keyword">end</span>
+
+[m n_pref] = max(sT_means');
+tuningAcc=sum(sT_pref==n_pref)/length(sT_pref);
+sT_pref=rad(sT_pref);
+</pre><h2 id="2">Test</h2><pre class="codeinput">load(<span class="string">'Lab6_CenterOutTest.mat'</span>)
+spikeWindow=1;
+
+<span class="keyword">for</span> dir=1:max(direction)
+    rad(dir)=(dir-1)*(pi/4);
+    degrees(dir)=(dir-1)*45;
+<span class="keyword">end</span>
+
+popVec=zeros(length(go),2);
+<span class="keyword">for</span> trial=1:length(go)
+    <span class="keyword">for</span> neuron=1:length(unit)
+        sR=sum(unit(neuron).times &gt;= go(trial)-spikeWindow &amp; unit(neuron).times &lt;= go(trial))/spikeWindow; <span class="comment">%spike rate</span>
+        popVec(trial,1)=popVec(trial,1)+sR*cos(sT_pref(neuron)); <span class="comment">% weight by firing rate: x</span>
+        popVec(trial,2)=popVec(trial,2)+sR*sin(sT_pref(neuron)); <span class="comment">% y</span>
+    <span class="keyword">end</span>
+    popDir(trial,1)=atan2(popVec(trial,2),popVec(trial,1));
+<span class="keyword">end</span>
+
+popDir(popDir&lt;0)=popDir(popDir&lt;0)+2*pi;
+<span class="keyword">for</span> trial=1:length(popDir)
+    [m popDir(trial,2)]=min(abs(popDir(trial,1)-rad));
+<span class="keyword">end</span>
+</pre><h2 id="3">Q1 Performance</h2><pre class="codeinput">popAcc=sum(popDir(:,2)==direction)/length(popDir);
+
+disp([<span class="string">'The population vector was accurate on '</span> num2str(popAcc*100) <span class="string">'% of trials.'</span>])
+</pre><pre class="codeoutput">The population vector was accurate on 36.25% of trials.
+</pre><h2 id="4">Q2</h2><pre class="codeinput">disp([<span class="string">'The cosine tuning curve correctly described '</span> num2str(tuningAcc*100) <span class="string">'% of tuning preferences.'</span>])
+
+hist(n_pref,8); title([<span class="string">'Distribution of preferred direction'</span>])
+ylabel([<span class="string">'Frequency'</span>]); xlabel([<span class="string">'Direction'</span>]);
+</pre><pre class="codeoutput">The cosine tuning curve correctly described 30.9859% of tuning preferences.
+</pre><img vspace="5" hspace="5" src="maxlike_01.png" alt=""> <h2 id="5">Q2 Additional comments</h2><pre class="codeinput"><span class="comment">% Assumption 1: neurons are cosine tuned</span>
+<span class="comment">% The cosine tuning function correctly described the peak of firing for 44%</span>
+<span class="comment">% of the neurons in the training set. This is an above-chance performance</span>
+<span class="comment">% (chance performance would be 1/8, or 12.5%), but there may be better</span>
+<span class="comment">% models for describing tuning that could account for more neurons'</span>
+<span class="comment">% responses.</span>
+
+<span class="comment">% Assumption 2: preferred directions are uniformly distributed.</span>
+<span class="comment">% The histogram of preferred directions shows that there is a mostly</span>
+<span class="comment">% uniform distribution (around 15-20 neurons) for tuning in most</span>
+<span class="comment">% directions, based off of the direction which elicited the maximum mean</span>
+<span class="comment">% firing rate over all trials.</span>
+</pre><h2 id="6">Q3 Weighting with change in firing rate from baseline</h2><pre class="codeinput"><span class="keyword">for</span> neuron=1:length(unit)
+    <span class="keyword">for</span> trial=1:length(go)
+        sR(neuron,trial)=sum(unit(neuron).times &gt;= go(trial)-spikeWindow &amp; unit(neuron).times &lt;= go(trial))/spikeWindow; <span class="comment">%spike rate</span>
+    <span class="keyword">end</span>
+    baseline(neuron)=mean(sR(neuron,:));
+    sR_baseline(neuron,:)=(sR(neuron,:)-baseline(neuron))/baseline(neuron);
+<span class="keyword">end</span>
+
+popVec_b=zeros(length(go),2);
+<span class="keyword">for</span> trial=1:length(go)
+    <span class="keyword">for</span> neuron=1:length(unit)
+        popVec_b(trial,1)=popVec_b(trial,1)+sR_baseline(neuron,trial)*cos(sT_pref(neuron)); <span class="comment">% weight by firing rate: x</span>
+        popVec_b(trial,2)=popVec_b(trial,2)+sR_baseline(neuron,trial)*sin(sT_pref(neuron)); <span class="comment">% y</span>
+    <span class="keyword">end</span>
+    popDir(trial,1)=atan2(popVec_b(trial,2),popVec_b(trial,1));
+<span class="keyword">end</span>
+
+popDir(popDir&lt;0)=popDir(popDir&lt;0)+2*pi;
+<span class="keyword">for</span> trial=1:length(popDir)
+    [m popDir(trial,2)]=min(abs(popDir(trial,1)-rad));
+<span class="keyword">end</span>
+
+popAcc=sum(popDir(:,2)==direction)/length(popDir);
+
+disp([<span class="string">'The population vector with baselined trials was accurate on '</span> num2str(popAcc*100) <span class="string">'% of trials.'</span>])
+</pre><pre class="codeoutput">The population vector with baselined trials was accurate on 41.25% of trials.
+</pre><h2 id="7">Q3 Comments</h2><pre class="codeinput"><span class="comment">% The baseline firing rate for each neuron was averaged over all trials,</span>
+<span class="comment">% then subtracted from the spike count in the 1-s encoding window for each</span>
+<span class="comment">% trial and converted into a percentage change from the baseline firing rate.</span>
+<span class="comment">% This resulted in both positive and negative deviations from the</span>
+<span class="comment">% baseline firing rate, and the deviation from the baselined firing rate</span>
+<span class="comment">% was used instead of the spiking rate.</span>
+
+<span class="comment">% Using the change in baseline firing rate resulted in an incremental</span>
+<span class="comment">% improvement, from 36.25% to 41.25%. However, the population vector</span>
+<span class="comment">% decoding method is still quite low, indicating that spike rates are not</span>
+<span class="comment">% sufficient to provide full information about intended movement direction.</span>
+</pre><h2 id="8">Maximum likelihood decoder</h2><h2 id="9">Train with poisspdf</h2><pre class="codeinput">clear <span class="string">all</span>; close <span class="string">all</span>
+load(<span class="string">'Lab5_CenterOutTrain.mat'</span>);
+spikeWindow=1;
+
+<span class="comment">%get means</span>
+<span class="keyword">for</span> n=1:length(unit)
+    nUse=unit(n).times;
+    <span class="keyword">for</span> dir=1:max(direction)
+        usego=go(direction==dir); <span class="comment">%only use go times for this direction</span>
+        sT_all=[];
+        <span class="keyword">for</span> goTime=1:length(usego)
+            spikeTimes=nUse(nUse &gt;= usego(goTime)-spikeWindow &amp; nUse &lt;= usego(goTime)); <span class="comment">%limit spike times to each epoch</span>
+            spikeNum=length(spikeTimes);
+            sT_all=[sT_all;spikeNum];
+        <span class="keyword">end</span>
+        sT_means(n,dir)=mean(sT_all)/spikeWindow;
+        sT_error(n,dir)=std(sT_all/spikeWindow)/sqrt(length(sT_all));
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+save(<span class="string">'sT_means.mat'</span>,<span class="string">'sT_means'</span>);
+</pre><h2 id="10">Test</h2><pre class="codeinput">clear <span class="string">all</span>; close <span class="string">all</span>;
+load(<span class="string">'Lab6_CenterOutTest.mat'</span>);
+load(<span class="string">'sT_means.mat'</span>); <span class="comment">%mean firing rate for</span>
+
+spikeWindow=1;
+
+<span class="keyword">for</span> dir=1:max(direction)
+    dir_prior(dir)=sum(direction==dir)/length(direction);
+<span class="keyword">end</span>
+
+<span class="comment">% prd=zeros(length(go),length(unit),max(direction));</span>
+<span class="keyword">for</span> goInd=1:length(go)
+    <span class="keyword">for</span> n=1:length(unit)
+        sR=sum(unit(n).times &gt;= go(goInd)-spikeWindow &amp; unit(n).times &lt;= go(goInd)); <span class="comment">%spike rate for each trial</span>
+        prd(n,:)=log(poisspdf(sR,sT_means(n,:)));
+    <span class="keyword">end</span>
+    pRd(goInd,:)=sum(prd,1);
+<span class="keyword">end</span>
+
+[m dir_poiss]=max(pRd');
+</pre><h2 id="11">Q1 Performance</h2><pre class="codeinput">poissAcc=sum(dir_poiss'==direction)/length(direction);
+
+disp([<span class="string">'Assuming a Poisson firing rate model, the maximum likelihood algorithm was accurate on '</span> num2str(poissAcc*100) <span class="string">'% of trials.'</span>])
+</pre><pre class="codeoutput">Assuming a Poisson firing rate model, the maximum likelihood algorithm was accurate on 68.75% of trials.
+</pre><h2 id="12">Maximum likelihood performance (Poisson)</h2><pre class="codeinput"><span class="comment">% The performance of the maximum likelihood algorithm with a Poisson firing</span>
+<span class="comment">% rate model was much higher than that of the population vector algorithm.</span>
+</pre><h2 id="13">Train with normpdf</h2><pre class="codeinput"><span class="keyword">for</span> goInd=1:length(go)
+    <span class="keyword">for</span> n=1:length(unit)
+        sR=sum(unit(n).times &gt;= go(goInd)-spikeWindow &amp; unit(n).times &lt;= go(goInd)); <span class="comment">%spike rate for each trial</span>
+        prd_norm(n,:)=log(normpdf(sR,(sT_means(n,:)),std(sT_means(n,:))));
+    <span class="keyword">end</span>
+    pRd_norm(goInd,:)=sum(prd_norm,1);
+<span class="keyword">end</span>
+
+[m dir_norm]=max(pRd_norm');
+</pre><h2 id="14">Q4 Performance</h2><pre class="codeinput">normAcc=sum(dir_norm'==direction)/length(direction);
+disp([<span class="string">'Assuming a Gaussian firing rate model, the maximum likelihood algorithm was accurate on '</span> num2str(normAcc*100) <span class="string">'% of trials.'</span>])
+</pre><pre class="codeoutput">Assuming a Gaussian firing rate model, the maximum likelihood algorithm was accurate on 63.75% of trials.
+</pre><h2 id="15">Maximum likelihood performance (Gaussian)</h2><pre class="codeinput"><span class="comment">% At high firing rates, the distribution of firing rates for a neuron</span>
+<span class="comment">% approximates a Gaussian distribution. The Gaussian firing rate model gave</span>
+<span class="comment">% a lower performance (63.75% rather than 68.75%). This model was not as</span>
+<span class="comment">% accurate at capturing the activity of neurons with lower average spike</span>
+<span class="comment">% rates. Since a large proportion of the neurons in the training set did</span>
+<span class="comment">% not have particularly high spiking rates, the Gaussian firing model had a</span>
+<span class="comment">% lower performance than the Poisson firing model.</span>
+
+hist(mean(sT_means'),15); title([<span class="string">'Firing rate distribution'</span>])
+xlabel([<span class="string">'Mean firing rate (spikes/s)'</span>])
+ylabel([<span class="string">'Frequency (# neurons)'</span>])
+</pre><img vspace="5" hspace="5" src="maxlike_02.png" alt=""> <p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Population vector decoder
+
+%% Train
+clear all; close all; load('Lab5_CenterOutTrain.mat');
+load('sT_p.mat');
+rad=0:pi/4:2*pi;
+spikeWindow=1;
+
+%get means
+for n=1:length(unit)
+    nUse=unit(n).times;
+    for dir=1:max(direction)
+        usego=go(direction==dir); %only use go times for this direction
+        sT_all=[];
+        for goTime=1:length(usego)
+            spikeTimes=nUse(nUse >= usego(goTime)-spikeWindow & nUse <= usego(goTime)); %limit spike times to each epoch
+            %spikeTimes=nUse(nUse >= usego(goTime)-spikeWindow/2 & nUse <= usego(goTime)+spikeWindow/2); %limit spike times to each epoch
+            spikeNum=length(spikeTimes);
+            sT_all=[sT_all;spikeNum];
+        end
+        sT_means(n,dir)=mean(sT_all)/spikeWindow;
+    end
+end
+
+%fit cosine function
+cos_fun=@(p,theta) p(1)+p(2)*cos(theta-p(3)); %Cosine function
+for n=1:size(sT_means,1)
+    sT_fit(n,:) = cos_fun(p(n,:),rad);
+end
+
+%preferred directions
+if exist('sT_pref','var')
+else
+    [m sT_pref] = max(sT_fit'); %tuning curve preferred directions
+end
+
+[m n_pref] = max(sT_means');
+tuningAcc=sum(sT_pref==n_pref)/length(sT_pref);
+sT_pref=rad(sT_pref);
+
+%% Test
+load('Lab6_CenterOutTest.mat')
+spikeWindow=1;
+
+for dir=1:max(direction)
+    rad(dir)=(dir-1)*(pi/4);
+    degrees(dir)=(dir-1)*45;
+end
+
+popVec=zeros(length(go),2);
+for trial=1:length(go)
+    for neuron=1:length(unit)
+        sR=sum(unit(neuron).times >= go(trial)-spikeWindow & unit(neuron).times <= go(trial))/spikeWindow; %spike rate
+        popVec(trial,1)=popVec(trial,1)+sR*cos(sT_pref(neuron)); % weight by firing rate: x
+        popVec(trial,2)=popVec(trial,2)+sR*sin(sT_pref(neuron)); % y
+    end
+    popDir(trial,1)=atan2(popVec(trial,2),popVec(trial,1));
+end
+
+popDir(popDir<0)=popDir(popDir<0)+2*pi;
+for trial=1:length(popDir)
+    [m popDir(trial,2)]=min(abs(popDir(trial,1)-rad));
+end
+
+%% Q1 Performance
+popAcc=sum(popDir(:,2)==direction)/length(popDir);
+
+disp(['The population vector was accurate on ' num2str(popAcc*100) '% of trials.'])
+
+%% Q2
+
+disp(['The cosine tuning curve correctly described ' num2str(tuningAcc*100) '% of tuning preferences.'])
+
+hist(n_pref,8); title(['Distribution of preferred direction'])
+ylabel(['Frequency']); xlabel(['Direction']); 
+
+%% Q2 Additional comments
+
+% Assumption 1: neurons are cosine tuned
+% The cosine tuning function correctly described the peak of firing for 44%
+% of the neurons in the training set. This is an above-chance performance
+% (chance performance would be 1/8, or 12.5%), but there may be better
+% models for describing tuning that could account for more neurons'
+% responses.
+
+% Assumption 2: preferred directions are uniformly distributed.
+% The histogram of preferred directions shows that there is a mostly
+% uniform distribution (around 15-20 neurons) for tuning in most
+% directions, based off of the direction which elicited the maximum mean
+% firing rate over all trials.
+
+%% Q3 Weighting with change in firing rate from baseline 
+
+for neuron=1:length(unit)
+    for trial=1:length(go)
+        sR(neuron,trial)=sum(unit(neuron).times >= go(trial)-spikeWindow & unit(neuron).times <= go(trial))/spikeWindow; %spike rate
+    end
+    baseline(neuron)=mean(sR(neuron,:));
+    sR_baseline(neuron,:)=(sR(neuron,:)-baseline(neuron))/baseline(neuron);
+end
+
+popVec_b=zeros(length(go),2);
+for trial=1:length(go)
+    for neuron=1:length(unit)
+        popVec_b(trial,1)=popVec_b(trial,1)+sR_baseline(neuron,trial)*cos(sT_pref(neuron)); % weight by firing rate: x
+        popVec_b(trial,2)=popVec_b(trial,2)+sR_baseline(neuron,trial)*sin(sT_pref(neuron)); % y
+    end
+    popDir(trial,1)=atan2(popVec_b(trial,2),popVec_b(trial,1));
+end
+
+popDir(popDir<0)=popDir(popDir<0)+2*pi;
+for trial=1:length(popDir)
+    [m popDir(trial,2)]=min(abs(popDir(trial,1)-rad));
+end
+
+popAcc=sum(popDir(:,2)==direction)/length(popDir);
+
+disp(['The population vector with baselined trials was accurate on ' num2str(popAcc*100) '% of trials.'])
+
+%% Q3 Comments
+
+% The baseline firing rate for each neuron was averaged over all trials,
+% then subtracted from the spike count in the 1-s encoding window for each 
+% trial and converted into a percentage change from the baseline firing rate. 
+% This resulted in both positive and negative deviations from the
+% baseline firing rate, and the deviation from the baselined firing rate
+% was used instead of the spiking rate. 
+
+% Using the change in baseline firing rate resulted in an incremental
+% improvement, from 36.25% to 41.25%. However, the population vector
+% decoding method is still quite low, indicating that spike rates are not
+% sufficient to provide full information about intended movement direction.
+
+%% Maximum likelihood decoder
+
+%% Train with poisspdf
+
+clear all; close all
+load('Lab5_CenterOutTrain.mat');
+spikeWindow=1;
+
+%get means
+for n=1:length(unit)
+    nUse=unit(n).times;
+    for dir=1:max(direction)
+        usego=go(direction==dir); %only use go times for this direction
+        sT_all=[];
+        for goTime=1:length(usego)
+            spikeTimes=nUse(nUse >= usego(goTime)-spikeWindow & nUse <= usego(goTime)); %limit spike times to each epoch
+            spikeNum=length(spikeTimes);
+            sT_all=[sT_all;spikeNum];
+        end
+        sT_means(n,dir)=mean(sT_all)/spikeWindow;
+        sT_error(n,dir)=std(sT_all/spikeWindow)/sqrt(length(sT_all));
+    end
+end
+
+save('sT_means.mat','sT_means');
+
+%% Test
+clear all; close all; 
+load('Lab6_CenterOutTest.mat'); 
+load('sT_means.mat'); %mean firing rate for 
+
+spikeWindow=1;
+
+for dir=1:max(direction)
+    dir_prior(dir)=sum(direction==dir)/length(direction);
+end
+
+% prd=zeros(length(go),length(unit),max(direction));
+for goInd=1:length(go)
+    for n=1:length(unit)
+        sR=sum(unit(n).times >= go(goInd)-spikeWindow & unit(n).times <= go(goInd)); %spike rate for each trial
+        prd(n,:)=log(poisspdf(sR,sT_means(n,:)));
+    end
+    pRd(goInd,:)=sum(prd,1);
+end
+
+[m dir_poiss]=max(pRd');
+
+%% Q1 Performance
+poissAcc=sum(dir_poiss'==direction)/length(direction);
+
+disp(['Assuming a Poisson firing rate model, the maximum likelihood algorithm was accurate on ' num2str(poissAcc*100) '% of trials.'])
+
+%% Maximum likelihood performance (Poisson)
+
+% The performance of the maximum likelihood algorithm with a Poisson firing
+% rate model was much higher than that of the population vector algorithm. 
+
+%% Train with normpdf
+
+for goInd=1:length(go)
+    for n=1:length(unit)
+        sR=sum(unit(n).times >= go(goInd)-spikeWindow & unit(n).times <= go(goInd)); %spike rate for each trial
+        prd_norm(n,:)=log(normpdf(sR,(sT_means(n,:)),std(sT_means(n,:))));
+    end
+    pRd_norm(goInd,:)=sum(prd_norm,1);
+end
+
+[m dir_norm]=max(pRd_norm');
+
+%% Q4 Performance
+
+normAcc=sum(dir_norm'==direction)/length(direction);
+disp(['Assuming a Gaussian firing rate model, the maximum likelihood algorithm was accurate on ' num2str(normAcc*100) '% of trials.'])
+
+%% Maximum likelihood performance (Gaussian) 
+
+% At high firing rates, the distribution of firing rates for a neuron
+% approximates a Gaussian distribution. The Gaussian firing rate model gave
+% a lower performance (63.75% rather than 68.75%). This model was not as
+% accurate at capturing the activity of neurons with lower average spike
+% rates. Since a large proportion of the neurons in the training set did
+% not have particularly high spiking rates, the Gaussian firing model had a
+% lower performance than the Poisson firing model. 
+
+hist(mean(sT_means'),15); title(['Firing rate distribution'])
+xlabel(['Mean firing rate (spikes/s)'])
+ylabel(['Frequency (# neurons)'])
+
+
+##### SOURCE END #####
+--></body></html>
